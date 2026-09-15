@@ -91,8 +91,7 @@
   <div class="card"><h2>Lifecycle Stage</h2><div class="chart-wrap"><canvas id="lifecycleChart"></canvas></div></div>
   <div class="card"><h2>Business Line (Opco)</h2><div class="chart-wrap"><canvas id="opcoChart"></canvas></div></div>
   <div class="card"><h2>Acquisition Sources</h2><div class="chart-wrap"><canvas id="sourceChart"></canvas></div></div>
-  <div class="card"><h2>Lead Score</h2><div class="chart-wrap"><canvas id="scoreChart"></canvas></div></div>
-  <div class="card"><h2>Areas of Interest</h2><div class="chart-wrap"><canvas id="areaChart"></canvas></div></div>
+<div class="card"><h2>Areas of Interest</h2><div class="chart-wrap"><canvas id="areaChart"></canvas></div></div>
 </div>
 
 <div class="grid">
@@ -238,8 +237,7 @@ function renderCharts(rows){
   doughnut('leadTypeChart',rows,r=>r.lt);
   doughnut('lifecycleChart',rows,r=>r.lc);
   doughnut('opcoChart',rows,r=>r.op);
-  doughnut('sourceChart',rows,r=>r.src);
-  bar('scoreChart',rows,r=>r.sc!==''?'Score '+r.sc:'No score');
+doughnut('sourceChart',rows,r=>r.src);
   bar('areaChart',rows,r=>r.ar);
 }
 
