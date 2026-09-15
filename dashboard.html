@@ -21,9 +21,6 @@
   .refresh-btn{background:var(--accent);color:#fff;border:none;padding:8px 16px;border-radius:8px;font-weight:600;cursor:pointer}
   .refresh-btn:hover{filter:brightness(1.1)}
   .refresh-btn:disabled{opacity:.5;cursor:wait}
-  .status{font-size:12px;color:var(--muted)}
-  .status .dot{display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--green);margin-right:6px}
-  .status .dot.err{background:var(--red)}
   .banner{display:none;background:#fdeaea;border:1px solid #f5c6c7;color:#c0392b;padding:10px 14px;border-radius:10px;font-size:13px;margin-bottom:16px}
 
   .filters{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:16px;margin-bottom:20px;box-shadow:0 1px 3px rgba(20,40,80,.06)}
@@ -55,7 +52,7 @@
   .bar-bg{background:#eef2f8;border-radius:6px;height:14px;overflow:hidden}
   .bar-fill{background:linear-gradient(90deg,var(--accent),#6aa2ff);height:100%;border-radius:6px}
 
-  .scroll-table{max-height:380px;overflow:auto}
+  .scroll-table{max-height:420px;overflow:auto}
   #activeChips{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}
   .chip{background:#eaf1ff;color:var(--accent);padding:4px 10px;border-radius:16px;font-size:12px;font-weight:600}
 
@@ -73,8 +70,8 @@
 
 <header>
   <div>
-    <h1>Leads Dashboard — Live Google Sheets</h1>
-    <p>Auto-refresh: <span id="refreshNote">—</span> &middot; Last update: <span id="lastUpdate">never</span></p>
+    <h1>Leads Dashboard — B2B Live</h1>
+    <p>Date field: <strong>Hand Off Lead Score Conversion Date</strong> &middot; Auto-refresh: <span id="refreshNote">—</span> &middot; Last update: <span id="lastUpdate">never</span></p>
   </div>
   <div class="actions">
     <button class="reset" onclick="resetFilters()">&#8635; Reset filters</button>
@@ -92,9 +89,9 @@
         <select id="fFrom" style="width:auto"></select><span style="align-self:center;color:var(--muted)">→</span><select id="fTo" style="width:auto"></select>
       </div>
     </div>
-    <div class="f-group"><label>Business Line (Opco)</label><select id="fOpco"><option value="">All</option></select></div>
     <div class="f-group"><label>Lifecycle Stage</label><select id="fLife"><option value="">All</option></select></div>
     <div class="f-group"><label>Lead Type</label><select id="fLeadType"><option value="">All</option></select></div>
+    <div class="f-group"><label>Business Line (Opco)</label><select id="fOpco"><option value="">All</option></select></div>
     <div class="f-group"><label>Source</label><select id="fSource"><option value="">All</option></select></div>
     <div class="f-group"><label>Area of Interest</label><select id="fArea"><option value="">All</option></select></div>
     <div class="f-group"><label>Interaction</label><select id="fInter"><option value="">All</option></select></div>
@@ -107,35 +104,33 @@
 
 <div class="grid">
   <div class="card full-width">
-    <h2>Monthly evolution (line view)</h2>
+    <h2>Monthly evolution (Hand Off Lead Score Conversion Date)</h2>
     <div class="chart-wrap"><canvas id="trendChart"></canvas></div>
   </div>
 </div>
 
 <div class="grid">
+  <div class="card"><h2>Hand Off Lead Type</h2><div class="chart-wrap"><canvas id="leadTypeChart"></canvas></div></div>
   <div class="card"><h2>Lifecycle Stage</h2><div class="chart-wrap"><canvas id="lifecycleChart"></canvas></div></div>
   <div class="card"><h2>Business Line (Opco)</h2><div class="chart-wrap"><canvas id="opcoChart"></canvas></div></div>
-  <div class="card"><h2>Lead Types</h2><div class="chart-wrap"><canvas id="leadTypeChart"></canvas></div></div>
   <div class="card"><h2>Acquisition Sources</h2><div class="chart-wrap"><canvas id="sourceChart"></canvas></div></div>
-  <div class="card"><h2>Areas of Interest</h2><div class="chart-wrap"><canvas id="areaChart"></canvas></div></div>
   <div class="card"><h2>Lead Score</h2><div class="chart-wrap"><canvas id="scoreChart"></canvas></div></div>
-  <div class="card"><h2>Interaction</h2><div class="chart-wrap"><canvas id="interChart"></canvas></div></div>
-  <div class="card"><h2>Owner</h2><div class="chart-wrap"><canvas id="ownerChart"></canvas></div></div>
+  <div class="card"><h2>Areas of Interest</h2><div class="chart-wrap"><canvas id="areaChart"></canvas></div></div>
 </div>
 
 <div class="grid">
   <div class="card full-width">
-    <h2>Interactions detail (filtered)</h2>
+    <h2>Campaign summary — [Client] Interaction Campaign Name (filtered)</h2>
     <div class="scroll-table" id="campaignTable"></div>
   </div>
 </div>
 
-<footer>Live dashboard generated from the Google Sheet (tab Linda-Consolidated, date field Hand Off Lead Score Conversion Date). Data refreshes automatically.</footer>
+<footer>Live dashboard — Google Sheet (tab Linda-Consolidated). Date field: Hand Off Lead Score Conversion Date. Data refreshes automatically.</footer>
 
 <script>
 const SHEET_ID='1UlPUrtVLhOnuZe8L9o_rwohOfwgPoTdmpkEnn1MohpI';
 const GID='688846994';
-const TQ='select B,C,D,E,F,L,M,AI,AK';
+const TQ='select B,C,D,E,F,L,M,AH,AI,AK';
 const REFRESH_MIN=1440;
 const GS_URL='https://docs.google.com/spreadsheets/d/'+SHEET_ID+'/gviz/tq?tqx=out:json&gid='+GID+'&tq='+encodeURIComponent(TQ)+'&_='+Date.now();
 
@@ -149,12 +144,9 @@ let minMonth, maxMonth;
 
 function setStatus(ok){
   document.getElementById('refreshNote').textContent='1x per day';
-  document.getElementById('lastUpdate').textContent=ok?'':new Date().toLocaleTimeString();
+  document.getElementById('lastUpdate').textContent=ok?new Date().toLocaleTimeString():'error';
 }
-
-function showBanner(show){
-  document.getElementById('banner').style.display=show?'block':'none';
-}
+function showBanner(show){ document.getElementById('banner').style.display=show?'block':'none'; }
 
 async function loadRows(){
   const res=await fetch(GS_URL);
@@ -164,30 +156,30 @@ async function loadRows(){
   if(!m) throw new Error('Unexpected response');
   const data=JSON.parse(m[1]);
   if(data.status!=='ok') throw new Error('Status '+data.status);
-  const rows=data.table.rows.map(r=>{
+  ROWS=data.table.rows.map(r=>{
     const c=r.c||[];
     const get=i=>(c[i]&&c[i].v!==undefined)?c[i].v:null;
-    const dateV=get(0);
-    let y=null,m=null;
-    if(typeof dateV==='string'&&dateV.indexOf('Date(')===0){
-      const parts=dateV.slice(5,-1).split(',');
-      y=+parts[0]; m=(+parts[1])+1;
+    const dv=get(0);
+    let y=null,mn=null;
+    if(typeof dv==='string'&&dv.indexOf('Date(')===0){
+      const p=dv.slice(5,-1).split(',');
+      y=+p[0]; mn=(+p[1])+1;
     }
-    if(!y||!m) return null;
+    if(!y||!mn) return null;
     const sc=get(3);
     return {
-      y, m,
-      op:get(6)===null?'':String(get(6)),
-      lc:get(4)===null?'':String(get(4)),
-      lt:get(2)===null?'':String(get(2)),
-      src:get(8)===null?'':String(get(8)),
-      ar:get(5)===null?'':String(get(5)),
-      it:get(7)===null?'':String(get(7)),
-      ow:get(1)===null?'':String(get(1)),
-      sc:sc===null?'':String(sc),
+      y,m:mn,
+      lc: get(4)===null?'':String(get(4)),
+      lt: get(2)===null?'':String(get(2)),
+      op: get(6)===null?'':String(get(6)),
+      src:get(9)===null?'':String(get(9)),
+      ar: get(5)===null?'':String(get(5)),
+      cam:get(7)===null?'':String(get(7)),
+      it: get(8)===null?'':String(get(8)),
+      ow: get(1)===null?'':String(get(1)),
+      sc: sc===null?'':String(sc),
     };
   }).filter(Boolean);
-  ROWS=rows;
   minMonth=Math.min(...ROWS.map(monthKey));
   maxMonth=Math.max(...ROWS.map(monthKey));
 }
@@ -208,9 +200,9 @@ function fillSel(id,vals){
 function initFilters(){
   fillMonthSel('fFrom',minMonth,maxMonth,minMonth);
   fillMonthSel('fTo',minMonth,maxMonth,maxMonth);
-  fillSel('fOpco',unique(r=>r.op));
   fillSel('fLife',unique(r=>r.lc));
   fillSel('fLeadType',unique(r=>r.lt));
+  fillSel('fOpco',unique(r=>r.op));
   fillSel('fSource',unique(r=>r.src));
   fillSel('fArea',unique(r=>r.ar));
   fillSel('fInter',unique(r=>r.it));
@@ -221,9 +213,9 @@ function currentFilters(){
   return {
     from:+document.getElementById('fFrom').value,
     to:+document.getElementById('fTo').value,
-    op:document.getElementById('fOpco').value,
     lc:document.getElementById('fLife').value,
     lt:document.getElementById('fLeadType').value,
+    op:document.getElementById('fOpco').value,
     src:document.getElementById('fSource').value,
     ar:document.getElementById('fArea').value,
     it:document.getElementById('fInter').value,
@@ -235,9 +227,9 @@ function filteredRows(){
   return ROWS.filter(r=>{
     const k=monthKey(r);
     if(k<f.from||k>f.to) return false;
-    if(f.op && r.op!==f.op) return false;
     if(f.lc && r.lc!==f.lc) return false;
     if(f.lt && r.lt!==f.lt) return false;
+    if(f.op && r.op!==f.op) return false;
     if(f.src && r.src!==f.src) return false;
     if(f.ar && r.ar!==f.ar) return false;
     if(f.it && r.it!==f.it) return false;
@@ -271,7 +263,7 @@ function renderKPIs(rows){
     {label:'MQL', value:mql.toLocaleString('en-US'), sub:'Marketing Qualified'},
     {label:'SQL', value:sql.toLocaleString('en-US'), sub:'Sales Qualified', cls:'green'},
     {label:'SQL rate', value:(total?((sql/total)*100).toFixed(1):'0')+'%'},
-    {label:'Salary Guide', value:sal.toLocaleString('en-US'), sub:'', cls:'green'},
+    {label:'Salary Guide', value:sal.toLocaleString('en-US'), cls:'green'},
   ];
   document.getElementById('kpiGrid').innerHTML=items.map(k=>`<div class="kpi ${k.cls||''}"><div class="label">${k.label}</div><div class="value">${k.value}</div><div class="sub">${k.sub||''}</div></div>`).join('');
 }
@@ -285,48 +277,37 @@ function renderTrend(rows){
   charts.trend=new Chart(ctx,{type:'line',data:{labels,datasets:[{data:values,borderColor:'#2f6feb',backgroundColor:'rgba(47,111,235,.12)',fill:true,tension:.35,borderWidth:2.5,pointRadius:3,pointBackgroundColor:'#2f6feb'}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:(c)=>c.parsed.y.toLocaleString('en-US')+' leads'}}},scales:{y:{beginAtZero:true,grid:{color:'rgba(30,42,58,.05)'}},x:{grid:{display:false}}}}});
 }
 
-function doughnut(id,rows,fn,title){
+function doughnut(id,rows,fn){
   const d=countBy(rows,fn);
   const labels=d.map(x=>x[0]), values=d.map(x=>x[1]);
   const ctx=document.getElementById(id);
   if(charts[id])charts[id].destroy();
-  charts[id]=new Chart(ctx,{type:'doughnut',data:{labels,datasets:[{data:values,backgroundColor:PALETTE,borderWidth:2,borderColor:'#fff'}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'right',labels:{boxWidth:12,font:{size:11}}},title:{display:!!title,text:title}}}});
+  charts[id]=new Chart(ctx,{type:'doughnut',data:{labels,datasets:[{data:values,backgroundColor:PALETTE,borderWidth:2,borderColor:'#fff'}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'right',labels:{boxWidth:12,font:{size:11}}}}}});
 }
-function bar(id,rows,fn,title){
+function bar(id,rows,fn){
   const d=countBy(rows,fn);
   const labels=d.map(x=>x[0]), values=d.map(x=>x[1]);
   const pal=PALETTE.concat(PALETTE).slice(0,Math.max(labels.length,1));
   const ctx=document.getElementById(id);
   if(charts[id])charts[id].destroy();
-  charts[id]=new Chart(ctx,{type:'bar',data:{labels,datasets:[{data:values,backgroundColor:pal}]},options:{indexAxis:'y',responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},title:{display:!!title,text:title}},scales:{x:{grid:{color:'rgba(30,42,58,.05)'}},y:{grid:{display:false}}}}});
+  charts[id]=new Chart(ctx,{type:'bar',data:{labels,datasets:[{data:values,backgroundColor:pal}]},options:{indexAxis:'y',responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{grid:{color:'rgba(30,42,58,.05)'}},y:{grid:{display:false}}}}});
 }
 
 function renderCharts(rows){
+  doughnut('leadTypeChart',rows,r=>r.lt);
   doughnut('lifecycleChart',rows,r=>r.lc);
   doughnut('opcoChart',rows,r=>r.op);
-  doughnut('leadTypeChart',rows,r=>r.lt);
   doughnut('sourceChart',rows,r=>r.src);
-  bar('areaChart',rows,r=>r.ar);
   bar('scoreChart',rows,r=>r.sc!==''?'Score '+r.sc:'No score');
-  doughnut('interChart',rows,r=>r.it);
-  doughnut('ownerChart',rows,r=>r.ow);
+  bar('areaChart',rows,r=>r.ar);
 }
 
-function renderInteractions(rows){
-  const d=countBy(rows,r=>r.it);
+function renderCampaigns(rows){
+  const d=countBy(rows,r=>r.cam);
   const total=rows.length;
   const max=d.length?d[0][1]:1;
   const body=d.map(x=>`<tr><td>${x[0]}</td><td class="num">${x[1].toLocaleString('en-US')}</td><td class="num">${total?((x[1]/total)*100).toFixed(1):'0'}%</td><td class="bar-cell"><div class="bar-bg"><div class="bar-fill" style="width:${(x[1]/max*100).toFixed(1)}%"></div></div></td></tr>`).join('');
-  document.getElementById('campaignTable').innerHTML=`<table><thead><tr><th>Interaction</th><th class="num">Leads</th><th class="num">%</th><th>Share</th></tr></thead><tbody>${body||'<tr><td colspan="4">No data</td></tr>'}</tbody></table>`;
-}
-
-function updateChips(){
-  const f=currentFilters();
-  const parts=[];
-  parts.push(`Period: ${FR[Math.floor(f.from%100)]} ${Math.floor(f.from/100)} → ${FR[Math.floor(f.to%100)]} ${Math.floor(f.to/100)}`);
-  if(f.op)parts.push('Opco: '+f.op); if(f.lc)parts.push('Stage: '+f.lc); if(f.lt)parts.push('Type: '+f.lt);
-  if(f.src)parts.push('Source: '+f.src); if(f.ar)parts.push('Area: '+f.ar); if(f.it)parts.push('Interaction: '+f.it); if(f.ow)parts.push('Owner: '+f.ow);
-  document.getElementById('activeChips').innerHTML=parts.map(p=>`<span class="chip">${p}</span>`).join('');
+  document.getElementById('campaignTable').innerHTML=`<table><thead><tr><th>Campaign Name</th><th class="num">Leads</th><th class="num">%</th><th>Share</th></tr></thead><tbody>${body||'<tr><td colspan="4">No data</td></tr>'}</tbody></table>`;
 }
 
 function apply(){
@@ -334,17 +315,26 @@ function apply(){
   renderKPIs(rows);
   renderTrend(rows);
   renderCharts(rows);
-  renderInteractions(rows);
+  renderCampaigns(rows);
   updateChips();
   document.getElementById('kpiGrid').innerHTML+=`<div class="kpi"><div class="label">Filtered</div><div class="value">${rows.length.toLocaleString('en-US')}</div><div class="sub">of ${ROWS.length.toLocaleString('en-US')} leads</div></div>`;
 }
 
+function updateChips(){
+  const f=currentFilters();
+  const parts=[];
+  parts.push(`Period: ${FR[Math.floor(f.from%100)]} ${Math.floor(f.from/100)} → ${FR[Math.floor(f.to%100)]} ${Math.floor(f.to/100)}`);
+  if(f.lc)parts.push('Stage: '+f.lc); if(f.lt)parts.push('Type: '+f.lt); if(f.op)parts.push('Opco: '+f.op);
+  if(f.src)parts.push('Source: '+f.src); if(f.ar)parts.push('Area: '+f.ar); if(f.it)parts.push('Interaction: '+f.it); if(f.ow)parts.push('Owner: '+f.ow);
+  document.getElementById('activeChips').innerHTML=parts.map(p=>`<span class="chip">${p}</span>`).join('');
+}
+
 function resetFilters(){
-  ['fOpco','fLife','fLeadType','fSource','fArea','fInter','fOwner'].forEach(id=>document.getElementById(id).value='');
+  ['fLife','fLeadType','fOpco','fSource','fArea','fInter','fOwner'].forEach(id=>document.getElementById(id).value='');
   apply();
 }
 
-['fOpco','fLife','fLeadType','fSource','fArea','fInter','fOwner','fFrom','fTo'].forEach(id=>{
+['fLife','fLeadType','fOpco','fSource','fArea','fInter','fOwner','fFrom','fTo'].forEach(id=>{
   document.getElementById(id).addEventListener('change', apply);
 });
 
@@ -358,13 +348,7 @@ function setLoading(loading){
 
 async function firstLoad(){
   setLoading(true);
-  try{
-    await refreshData(false);
-  }catch(e){
-    console.error(e);
-  }finally{
-    setLoading(false);
-  }
+  try{ await refreshData(false); }catch(e){ console.error(e); }finally{ setLoading(false); }
   setInterval(()=>refreshData(false), REFRESH_MIN*60000);
 }
 
@@ -375,7 +359,6 @@ async function refreshData(manual){
     initFilters();
     apply();
     setStatus(true);
-    if(manual) console.info('Refreshed at '+new Date().toLocaleTimeString());
   }catch(e){
     console.error(e);
     showBanner(true);
