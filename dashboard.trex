@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest manifest-version="0.1" xmlns="http://www.tableausoftware.com/extensions">
+    <dashboard-extension id="randstad-b2b-leads-dashboard" extension-version="0.1.0">
+        <name>Leads Dashboard - Live Google Sheets</name>
+        <author>
+            <name>Randstad RSG NA</name>
+            <organization>Randstad</organization>
+            <website>https://github.com/</website>
+        </author>
+        <min-version-tableau>2021.1</min-version-tableau>
+        <script src="https://VOTRE_UTILISATEUR.github.io/VOTRE_REPO/dashboard.html"/>
+    </dashboard-extension>
+</manifest>

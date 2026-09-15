@@ -1,0 +1,389 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Leads Dashboard - Interactive (Live Google Sheets)</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<style>
+  :root{
+    --bg:#f4f6fb; --card:#fff; --text:#1e2a3a; --muted:#7a8aa0; --accent:#2f6feb;
+    --border:#e3e8f0; --green:#1f9d55; --red:#e5484d; --amber:#f5a623;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:'Segoe UI',system-ui,sans-serif;background:var(--bg);color:var(--text);line-height:1.5;padding:24px}
+  header{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;margin-bottom:18px}
+  header h1{font-size:22px;font-weight:700}
+  header p{color:var(--muted);font-size:13px}
+  .actions{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+  .reset{background:#eaf1ff;color:var(--accent);border:none;padding:8px 16px;border-radius:8px;font-weight:600;cursor:pointer}
+  .reset:hover{background:#d6e4ff}
+  .refresh-btn{background:var(--accent);color:#fff;border:none;padding:8px 16px;border-radius:8px;font-weight:600;cursor:pointer}
+  .refresh-btn:hover{filter:brightness(1.1)}
+  .refresh-btn:disabled{opacity:.5;cursor:wait}
+  .status{font-size:12px;color:var(--muted)}
+  .status .dot{display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--green);margin-right:6px}
+  .status .dot.err{background:var(--red)}
+  .banner{display:none;background:#fdeaea;border:1px solid #f5c6c7;color:#c0392b;padding:10px 14px;border-radius:10px;font-size:13px;margin-bottom:16px}
+
+  .filters{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:16px;margin-bottom:20px;box-shadow:0 1px 3px rgba(20,40,80,.06)}
+  .filters h2{font-size:13px;color:var(--muted);text-transform:uppercase;letter-spacing:.4px;margin-bottom:12px;font-weight:600}
+  .filter-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px}
+  .f-group label{display:block;font-size:11px;color:var(--muted);margin-bottom:4px;font-weight:600;text-transform:uppercase;letter-spacing:.3px}
+  .f-group select{width:100%;padding:9px 10px;border:1px solid var(--border);border-radius:8px;background:#fff;font-size:13px;color:var(--text);cursor:pointer}
+  .f-group select:focus{outline:2px solid var(--accent);border-color:var(--accent)}
+  .f-group select:disabled{background:#f2f4f8;color:var(--muted);cursor:wait}
+
+  .kpi-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:14px;margin-bottom:20px}
+  .kpi{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:18px;box-shadow:0 1px 3px rgba(20,40,80,.06)}
+  .kpi .label{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.4px;font-weight:600}
+  .kpi .value{font-size:28px;font-weight:700;margin-top:6px}
+  .kpi .sub{font-size:12px;color:var(--muted);margin-top:4px}
+  .kpi.green .value{color:var(--green)}
+
+  .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(380px,1fr));gap:18px;margin-bottom:20px}
+  .card{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:18px;box-shadow:0 1px 3px rgba(20,40,80,.06)}
+  .card h2{font-size:14px;font-weight:600;margin-bottom:14px}
+  .chart-wrap{position:relative;height:300px}
+  .full-width{grid-column:1/-1}
+
+  table{width:100%;border-collapse:collapse;font-size:13px}
+  th,td{text-align:left;padding:8px 10px;border-bottom:1px solid var(--border)}
+  th{color:var(--muted);font-weight:600;text-transform:uppercase;font-size:11px;letter-spacing:.4px}
+  td.num{text-align:right;font-variant-numeric:tabular-nums}
+  .bar-cell{min-width:120px}
+  .bar-bg{background:#eef2f8;border-radius:6px;height:14px;overflow:hidden}
+  .bar-fill{background:linear-gradient(90deg,var(--accent),#6aa2ff);height:100%;border-radius:6px}
+
+  .scroll-table{max-height:380px;overflow:auto}
+  #activeChips{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}
+  .chip{background:#eaf1ff;color:var(--accent);padding:4px 10px;border-radius:16px;font-size:12px;font-weight:600}
+
+  .loader{display:none;position:fixed;inset:0;background:rgba(244,246,251,.7);z-index:50;align-items:center;justify-content:center}
+  .loader.show{display:flex}
+  .spinner{width:44px;height:44px;border:4px solid #d6e4ff;border-top-color:var(--accent);border-radius:50%;animation:spin 1s linear infinite}
+  @keyframes spin{to{transform:rotate(360deg)}}
+
+  @media(max-width:600px){body{padding:12px}.grid{grid-template-columns:1fr}}
+  footer{color:var(--muted);font-size:12px;margin-top:16px;text-align:center}
+</style>
+</head>
+<body>
+<div class="loader" id="loader"><div class="spinner"></div></div>
+
+<header>
+  <div>
+    <h1>Leads Dashboard — Live Google Sheets</h1>
+    <p>Auto-refresh: <span id="refreshNote">—</span> &middot; Last update: <span id="lastUpdate">never</span></p>
+  </div>
+  <div class="actions">
+    <button class="reset" onclick="resetFilters()">&#8635; Reset filters</button>
+    <button class="refresh-btn" id="refreshBtn" onclick="refreshData(true)">&#8634; Refresh</button>
+  </div>
+</header>
+
+<div class="banner" id="banner">Unable to load data from Google Sheets. Please check the connection and the sharing settings of the sheet.</div>
+
+<div class="filters" id="filtersBox">
+  <h2>Filters</h2>
+  <div class="filter-grid">
+    <div class="f-group" style="grid-column:span 2"><label>Period (months)</label>
+      <div style="display:flex;gap:8px">
+        <select id="fFrom" style="width:auto"></select><span style="align-self:center;color:var(--muted)">→</span><select id="fTo" style="width:auto"></select>
+      </div>
+    </div>
+    <div class="f-group"><label>Business Line (Opco)</label><select id="fOpco"><option value="">All</option></select></div>
+    <div class="f-group"><label>Lifecycle Stage</label><select id="fLife"><option value="">All</option></select></div>
+    <div class="f-group"><label>Lead Type</label><select id="fLeadType"><option value="">All</option></select></div>
+    <div class="f-group"><label>Source</label><select id="fSource"><option value="">All</option></select></div>
+    <div class="f-group"><label>Area of Interest</label><select id="fArea"><option value="">All</option></select></div>
+    <div class="f-group"><label>Interaction</label><select id="fInter"><option value="">All</option></select></div>
+    <div class="f-group"><label>Owner</label><select id="fOwner"><option value="">All</option></select></div>
+  </div>
+  <div id="activeChips"></div>
+</div>
+
+<div class="kpi-grid" id="kpiGrid"></div>
+
+<div class="grid">
+  <div class="card full-width">
+    <h2>Monthly evolution (line view)</h2>
+    <div class="chart-wrap"><canvas id="trendChart"></canvas></div>
+  </div>
+</div>
+
+<div class="grid">
+  <div class="card"><h2>Lifecycle Stage</h2><div class="chart-wrap"><canvas id="lifecycleChart"></canvas></div></div>
+  <div class="card"><h2>Business Line (Opco)</h2><div class="chart-wrap"><canvas id="opcoChart"></canvas></div></div>
+  <div class="card"><h2>Lead Types</h2><div class="chart-wrap"><canvas id="leadTypeChart"></canvas></div></div>
+  <div class="card"><h2>Acquisition Sources</h2><div class="chart-wrap"><canvas id="sourceChart"></canvas></div></div>
+  <div class="card"><h2>Areas of Interest</h2><div class="chart-wrap"><canvas id="areaChart"></canvas></div></div>
+  <div class="card"><h2>Lead Score</h2><div class="chart-wrap"><canvas id="scoreChart"></canvas></div></div>
+  <div class="card"><h2>Interaction</h2><div class="chart-wrap"><canvas id="interChart"></canvas></div></div>
+  <div class="card"><h2>Owner</h2><div class="chart-wrap"><canvas id="ownerChart"></canvas></div></div>
+</div>
+
+<div class="grid">
+  <div class="card full-width">
+    <h2>Interactions detail (filtered)</h2>
+    <div class="scroll-table" id="campaignTable"></div>
+  </div>
+</div>
+
+<footer>Live dashboard generated from the Google Sheet (tab Linda-Consolidated, date field Hand Off Lead Score Conversion Date). Data refreshes automatically.</footer>
+
+<script>
+const SHEET_ID='1UlPUrtVLhOnuZe8L9o_rwohOfwgPoTdmpkEnn1MohpI';
+const GID='688846994';
+const TQ='select B,C,D,E,F,L,M,AI,AK';
+const REFRESH_MIN=1440;
+const GS_URL='https://docs.google.com/spreadsheets/d/'+SHEET_ID+'/gviz/tq?tqx=out:json&gid='+GID+'&tq='+encodeURIComponent(TQ);
+
+const FR=['','Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+const PALETTE=['#2f6feb','#6aa2ff','#22c1a3','#f5a623','#e5484d','#9b59b6','#16a085','#e67e22','#c0392b','#2c3e50','#8e44ad','#d35400','#3498db','#1f9d55','#f39c12','#7f8c8d'];
+
+let ROWS=[];
+let charts={};
+const monthKey = r => r.y*100 + r.m;
+let minMonth, maxMonth;
+
+function setStatus(ok){
+  document.getElementById('refreshNote').textContent='1x per day';
+  document.getElementById('lastUpdate').textContent=ok?'':new Date().toLocaleTimeString();
+}
+
+function showBanner(show){
+  document.getElementById('banner').style.display=show?'block':'none';
+}
+
+async function loadRows(){
+  const res=await fetch(GS_URL);
+  if(!res.ok) throw new Error('HTTP '+res.status);
+  const text=await res.text();
+  const m=text.match(/google\.visualization\.Query\.setResponse\((.*)\);\s*$/s);
+  if(!m) throw new Error('Unexpected response');
+  const data=JSON.parse(m[1]);
+  if(data.status!=='ok') throw new Error('Status '+data.status);
+  const rows=data.table.rows.map(r=>{
+    const c=r.c||[];
+    const get=i=>(c[i]&&c[i].v!==undefined)?c[i].v:null;
+    const dateV=get(0);
+    let y=null,m=null;
+    if(typeof dateV==='string'&&dateV.indexOf('Date(')===0){
+      const parts=dateV.slice(5,-1).split(',');
+      y=+parts[0]; m=(+parts[1])+1;
+    }
+    if(!y||!m) return null;
+    const sc=get(3);
+    return {
+      y, m,
+      op:get(6)===null?'':String(get(6)),
+      lc:get(4)===null?'':String(get(4)),
+      lt:get(2)===null?'':String(get(2)),
+      src:get(8)===null?'':String(get(8)),
+      ar:get(5)===null?'':String(get(5)),
+      it:get(7)===null?'':String(get(7)),
+      ow:get(1)===null?'':String(get(1)),
+      sc:sc===null?'':String(sc),
+    };
+  }).filter(Boolean);
+  ROWS=rows;
+  minMonth=Math.min(...ROWS.map(monthKey));
+  maxMonth=Math.max(...ROWS.map(monthKey));
+}
+
+function fillMonthSel(id,min,max,def){
+  const sel=document.getElementById(id);
+  sel.innerHTML='';
+  for(let k=min;k<=max;k++){ const y=Math.floor(k/100),m=k%100; sel.add(new Option(FR[m]+' '+y,k)); }
+  sel.value=def;
+}
+function unique(fn){ const s=new Set(); ROWS.forEach(r=>{ const v=fn(r); if(v) s.add(v); }); return [...s].sort(); }
+function fillSel(id,vals){
+  const sel=document.getElementById(id);
+  sel.innerHTML='<option value="">All</option>';
+  vals.forEach(v=>sel.add(new Option(v,v)));
+}
+
+function initFilters(){
+  fillMonthSel('fFrom',minMonth,maxMonth,minMonth);
+  fillMonthSel('fTo',minMonth,maxMonth,maxMonth);
+  fillSel('fOpco',unique(r=>r.op));
+  fillSel('fLife',unique(r=>r.lc));
+  fillSel('fLeadType',unique(r=>r.lt));
+  fillSel('fSource',unique(r=>r.src));
+  fillSel('fArea',unique(r=>r.ar));
+  fillSel('fInter',unique(r=>r.it));
+  fillSel('fOwner',unique(r=>r.ow));
+}
+
+function currentFilters(){
+  return {
+    from:+document.getElementById('fFrom').value,
+    to:+document.getElementById('fTo').value,
+    op:document.getElementById('fOpco').value,
+    lc:document.getElementById('fLife').value,
+    lt:document.getElementById('fLeadType').value,
+    src:document.getElementById('fSource').value,
+    ar:document.getElementById('fArea').value,
+    it:document.getElementById('fInter').value,
+    ow:document.getElementById('fOwner').value,
+  };
+}
+function filteredRows(){
+  const f=currentFilters();
+  return ROWS.filter(r=>{
+    const k=monthKey(r);
+    if(k<f.from||k>f.to) return false;
+    if(f.op && r.op!==f.op) return false;
+    if(f.lc && r.lc!==f.lc) return false;
+    if(f.lt && r.lt!==f.lt) return false;
+    if(f.src && r.src!==f.src) return false;
+    if(f.ar && r.ar!==f.ar) return false;
+    if(f.it && r.it!==f.it) return false;
+    if(f.ow && r.ow!==f.ow) return false;
+    return true;
+  });
+}
+function countBy(rows,fn){
+  const map={};
+  rows.forEach(r=>{ const v=fn(r)||'(empty)'; map[v]=(map[v]||0)+1; });
+  return Object.entries(map).sort((a,b)=>b[1]-a[1]);
+}
+function monthTrend(rows){
+  const map={};
+  rows.forEach(r=>{ const k=monthKey(r); map[k]=(map[k]||0)+1; });
+  const out=[];
+  const f=currentFilters();
+  for(let k=f.from;k<=f.to;k++){ const y=Math.floor(k/100),m=k%100; out.push({y,m,c:map[k]||0}); }
+  return out;
+}
+
+function renderKPIs(rows){
+  const total=rows.length;
+  const lc=countBy(rows,r=>r.lc);
+  const get=v=>lc.find(x=>x[0]===v)?.[1]||0;
+  const mql=get('Marketing Qualified Lead'), sql=get('Sales Qualified Lead');
+  const lt=countBy(rows,r=>r.lt);
+  const sal=lt.find(x=>x[0]==='Salary Guide')?.[1]||0;
+  const items=[
+    {label:'Total leads', value:total.toLocaleString('en-US')},
+    {label:'MQL', value:mql.toLocaleString('en-US'), sub:'Marketing Qualified'},
+    {label:'SQL', value:sql.toLocaleString('en-US'), sub:'Sales Qualified', cls:'green'},
+    {label:'SQL rate', value:(total?((sql/total)*100).toFixed(1):'0')+'%'},
+    {label:'Salary Guide', value:sal.toLocaleString('en-US'), sub:'', cls:'green'},
+  ];
+  document.getElementById('kpiGrid').innerHTML=items.map(k=>`<div class="kpi ${k.cls||''}"><div class="label">${k.label}</div><div class="value">${k.value}</div><div class="sub">${k.sub||''}</div></div>`).join('');
+}
+
+function renderTrend(rows){
+  const t=monthTrend(rows).filter(x=>x.m!==0);
+  const labels=t.map(x=>FR[x.m]+' '+x.y);
+  const values=t.map(x=>x.c);
+  const ctx=document.getElementById('trendChart');
+  if(charts.trend) charts.trend.destroy();
+  charts.trend=new Chart(ctx,{type:'line',data:{labels,datasets:[{data:values,borderColor:'#2f6feb',backgroundColor:'rgba(47,111,235,.12)',fill:true,tension:.35,borderWidth:2.5,pointRadius:3,pointBackgroundColor:'#2f6feb'}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:(c)=>c.parsed.y.toLocaleString('en-US')+' leads'}}},scales:{y:{beginAtZero:true,grid:{color:'rgba(30,42,58,.05)'}},x:{grid:{display:false}}}}});
+}
+
+function doughnut(id,rows,fn,title){
+  const d=countBy(rows,fn);
+  const labels=d.map(x=>x[0]), values=d.map(x=>x[1]);
+  const ctx=document.getElementById(id);
+  if(charts[id])charts[id].destroy();
+  charts[id]=new Chart(ctx,{type:'doughnut',data:{labels,datasets:[{data:values,backgroundColor:PALETTE,borderWidth:2,borderColor:'#fff'}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'right',labels:{boxWidth:12,font:{size:11}}},title:{display:!!title,text:title}}}});
+}
+function bar(id,rows,fn,title){
+  const d=countBy(rows,fn);
+  const labels=d.map(x=>x[0]), values=d.map(x=>x[1]);
+  const pal=PALETTE.concat(PALETTE).slice(0,Math.max(labels.length,1));
+  const ctx=document.getElementById(id);
+  if(charts[id])charts[id].destroy();
+  charts[id]=new Chart(ctx,{type:'bar',data:{labels,datasets:[{data:values,backgroundColor:pal}]},options:{indexAxis:'y',responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},title:{display:!!title,text:title}},scales:{x:{grid:{color:'rgba(30,42,58,.05)'}},y:{grid:{display:false}}}}});
+}
+
+function renderCharts(rows){
+  doughnut('lifecycleChart',rows,r=>r.lc);
+  doughnut('opcoChart',rows,r=>r.op);
+  doughnut('leadTypeChart',rows,r=>r.lt);
+  doughnut('sourceChart',rows,r=>r.src);
+  bar('areaChart',rows,r=>r.ar);
+  bar('scoreChart',rows,r=>r.sc!==''?'Score '+r.sc:'No score');
+  doughnut('interChart',rows,r=>r.it);
+  doughnut('ownerChart',rows,r=>r.ow);
+}
+
+function renderInteractions(rows){
+  const d=countBy(rows,r=>r.it);
+  const total=rows.length;
+  const max=d.length?d[0][1]:1;
+  const body=d.map(x=>`<tr><td>${x[0]}</td><td class="num">${x[1].toLocaleString('en-US')}</td><td class="num">${total?((x[1]/total)*100).toFixed(1):'0'}%</td><td class="bar-cell"><div class="bar-bg"><div class="bar-fill" style="width:${(x[1]/max*100).toFixed(1)}%"></div></div></td></tr>`).join('');
+  document.getElementById('campaignTable').innerHTML=`<table><thead><tr><th>Interaction</th><th class="num">Leads</th><th class="num">%</th><th>Share</th></tr></thead><tbody>${body||'<tr><td colspan="4">No data</td></tr>'}</tbody></table>`;
+}
+
+function updateChips(){
+  const f=currentFilters();
+  const parts=[];
+  parts.push(`Period: ${FR[Math.floor(f.from%100)]} ${Math.floor(f.from/100)} → ${FR[Math.floor(f.to%100)]} ${Math.floor(f.to/100)}`);
+  if(f.op)parts.push('Opco: '+f.op); if(f.lc)parts.push('Stage: '+f.lc); if(f.lt)parts.push('Type: '+f.lt);
+  if(f.src)parts.push('Source: '+f.src); if(f.ar)parts.push('Area: '+f.ar); if(f.it)parts.push('Interaction: '+f.it); if(f.ow)parts.push('Owner: '+f.ow);
+  document.getElementById('activeChips').innerHTML=parts.map(p=>`<span class="chip">${p}</span>`).join('');
+}
+
+function apply(){
+  const rows=filteredRows();
+  renderKPIs(rows);
+  renderTrend(rows);
+  renderCharts(rows);
+  renderInteractions(rows);
+  updateChips();
+  document.getElementById('kpiGrid').innerHTML+=`<div class="kpi"><div class="label">Filtered</div><div class="value">${rows.length.toLocaleString('en-US')}</div><div class="sub">of ${ROWS.length.toLocaleString('en-US')} leads</div></div>`;
+}
+
+function resetFilters(){
+  ['fOpco','fLife','fLeadType','fSource','fArea','fInter','fOwner'].forEach(id=>document.getElementById(id).value='');
+  apply();
+}
+
+['fOpco','fLife','fLeadType','fSource','fArea','fInter','fOwner','fFrom','fTo'].forEach(id=>{
+  document.getElementById(id).addEventListener('change', apply);
+});
+
+document.getElementById('refreshBtn').addEventListener('click',()=>refreshData(true));
+
+function setLoading(loading){
+  document.querySelectorAll('#filtersBox select').forEach(s=>s.disabled=loading);
+  document.getElementById('refreshBtn').disabled=loading;
+  document.getElementById('loader').classList.toggle('show',loading);
+}
+
+async function firstLoad(){
+  setLoading(true);
+  try{
+    await refreshData(false);
+  }catch(e){
+    console.error(e);
+  }finally{
+    setLoading(false);
+  }
+  setInterval(()=>refreshData(false), REFRESH_MIN*60000);
+}
+
+async function refreshData(manual){
+  try{
+    await loadRows();
+    showBanner(false);
+    initFilters();
+    apply();
+    setStatus(true);
+    if(manual) console.info('Refreshed at '+new Date().toLocaleTimeString());
+  }catch(e){
+    console.error(e);
+    showBanner(true);
+    setStatus(false);
+  }
+}
+
+firstLoad();
+</script>
+</body>
+</html>
