@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest manifest-version="0.1" xmlns="http://www.tableausoftware.com/extensions">
-    <dashboard-extension id="randstad-b2b-leads-dashboard" extension-version="0.1.0">
+    <dashboard-extension id="randstad-b2b-leads-dashboard" extension-version="0.1.1">
         <name>Leads Dashboard - Live Google Sheets</name>
         <author>
             <name>Randstad RSG NA</name>
