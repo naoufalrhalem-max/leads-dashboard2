@@ -8,6 +8,6 @@
             <website>https://github.com/</website>
         </author>
         <min-version-tableau>2021.1</min-version-tableau>
-        <script src="https://VOTRE_UTILISATEUR.github.io/VOTRE_REPO/dashboard.html"/>
+        <script src="https://naoufalrhalem-max.github.io/leads-dashboard2/dashboard.html"/>
     </dashboard-extension>
 </manifest>
